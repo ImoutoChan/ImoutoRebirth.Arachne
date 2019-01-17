@@ -10,7 +10,7 @@ using MassTransit.RabbitMq.Extensions.Hosting.Extensions;
 using MassTransit.RabbitMqTransport;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace ImoutoRebirth.Arachne.Service
+namespace ImoutoRebirth.Arachne.Service.Extensions
 {
     public static class ServiceCollectionExtensions
     {

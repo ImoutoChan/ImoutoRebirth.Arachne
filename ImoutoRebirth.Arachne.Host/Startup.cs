@@ -2,7 +2,7 @@
 using ImoutoRebirth.Arachne.Host.Settings;
 using ImoutoRebirth.Arachne.Infrastructure;
 using ImoutoRebirth.Arachne.MessageContracts;
-using ImoutoRebirth.Arachne.Service;
+using ImoutoRebirth.Arachne.Service.Extensions;
 using ImoutoRebirth.Common.Host;
 using MassTransit.RabbitMq.Extensions.Hosting.Extensions;
 using Microsoft.Extensions.Configuration;

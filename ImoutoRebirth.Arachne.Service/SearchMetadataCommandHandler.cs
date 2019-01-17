@@ -5,7 +5,9 @@ using ImoutoRebirth.Arachne.Core;
 using ImoutoRebirth.Arachne.Core.Models;
 using ImoutoRebirth.Arachne.MessageContracts;
 using ImoutoRebirth.Arachne.Service.Commands;
+using ImoutoRebirth.Arachne.Service.Extensions;
 using ImoutoRebirth.Lilin.MessageContracts;
+using Mackiovello.Maybe;
 using MassTransit;
 
 namespace ImoutoRebirth.Arachne.Service
@@ -27,28 +29,56 @@ namespace ImoutoRebirth.Arachne.Service
 
             var searchResults = await _arachneSearchService.Search(new Image(md5), where);
 
-            await _remoteCommandService.SendCommand<IUpdateMetadataCommand>(ConvertToCommand(searchResults));
+            var sendCommand = ConvertToCommand(searchResults, context.Message.FileId)
+                .Select(command => _remoteCommandService.SendCommand<IUpdateMetadataCommand>(command));
+
+            if (sendCommand.HasValue)
+                await sendCommand.Value;
 
             // todo debug only
+#if DEBUG
             if (searchResults is Metadata searchResult)
                 Console.Out.WriteLine(searchResult.Source + " | " + searchResult.IsFound);
+#endif
         }
 
-        private object ConvertToCommand(SearchResult searchResults)
+        private Maybe<UpdateMetadataCommand> ConvertToCommand(SearchResult searchResults, Guid fileId)
         {
-            if (searchResults is Metadata searchResult)
-            {
-                if (searchResult.IsFound)
-                {
-                    var tags = searchResult.Tags.Select(CreateFileTag).ToArray();
-                    var notes = searchResult.Notes.Select(CreateFileNotes).ToArray();
+            if (!(searchResults is Metadata searchResult) || !searchResult.IsFound)
+                return Maybe<UpdateMetadataCommand>.Nothing;
 
-                    return new UpdateMetadataCommand
-                    {
-                        FileId = searchResult.
-                    }
-                }
-            }
+
+            var tags = searchResult.Tags.Select(CreateFileTag).ToArray();
+            var notes = searchResult.Notes.Select(CreateFileNote).ToArray();
+
+            return new UpdateMetadataCommand
+                   {
+                       FileId = fileId,
+                       FileTags = tags,
+                       FileNotes = notes,
+                       MetadataSource = searchResult.Source.GetMetadataSource()
+                   }.ToMaybe();
+
         }
+
+        private IFileTag CreateFileTag(Tag tag) 
+            => new FileTag
+            {
+                Name = tag.Name,
+                Type = tag.Type,
+                Synonyms = tag.Synonyms.ToArray(),
+                Value = tag.Value
+            };
+
+        private IFileNote CreateFileNote(Note note)
+            => new FileNote
+               {
+                   SourceId = note.SourceId,
+                   Label = note.Label,
+                   PositionFromLeft = note.Position.PointLeft,
+                   PositionFromTop = note.Position.PointTop,
+                   Width = note.Position.SizeWidth,
+                   Height = note.Position.SizeHeight
+               };
     }
 }
